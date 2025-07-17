@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Halftone Generator</title>
+    <style>
+        /* Basic CSS for layout - Add your actual CSS rules here */
+        body {
+            font-family: sans-serif;
+            margin: 0;
+            background-color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* Align items to the top */
+            min-height: 100vh;
+            padding-top: 20px; /* Add some padding at the top */
+        }
+
+        .app-container {
+            width: 95%;
+            max-width: 1400px; /* Adjust max-width as needed */
+        }
+
+        .container {
+            display: flex;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            overflow: hidden; /* Contain children */
+        }
+
+        .sidebar {
+            width: 300px; /* Fixed width for the sidebar */
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-right: 1px solid #ddd;
+            display: flex;
+            flex-direction: column;
+            gap: 20px; /* Space between panels */
+        }
+
+        .main-content {
+            flex-grow: 1; /* Takes remaining space */
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #e9ecef;
+        }
+
+        .panel {
+            background-color: #fff;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .upload-panel .upload-area {
+            border: 2px dashed #007bff;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            background-color: #eef;
+            border-radius: 4px;
+        }
+
+        .upload-panel .upload-label {
+             display: flex;
+             flex-direction: column;
+             align-items: center;
+             gap: 10px;
+             color: #0056b3;
+        }
+
+         .upload-panel .upload-icon {
+             font-size: 2em;
+         }
+
+        .upload-panel .upload-input {
+            display: none; /* Hide the actual input */
+        }
+
+        .controls-panel h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+            color: #333;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .slider-container input[type="range"] {
+            flex-grow: 1;
+            cursor: pointer;
+        }
+
+         .slider-container .value-display {
+             min-width: 30px; /* Ensure space for the value */
+             text-align: right;
+             font-size: 0.9em;
+             color: #333;
+             background-color: #eee;
+             padding: 2px 5px;
+             border-radius: 3px;
+         }
+
+        .dither-select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        .action-panel {
+             display: flex;
+             gap: 10px; /* Space between buttons */
+             margin-top: auto; /* Push to the bottom if sidebar has extra space */
+        }
+
+        .btn {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1em;
+            flex-grow: 1; /* Make buttons fill the space */
+        }
+
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+
+         .btn-secondary:hover {
+             background-color: #5a6268;
+         }
+
+        .canvas-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #halftoneCanvas {
+            max-width: 100%;
+            max-height: 80vh; /* Limit canvas height */
+            display: block; /* Remove extra space below canvas */
+            background-color: white; /* Ensure canvas background is white */
+            box-shadow: 0 0 5px rgba(0,0,0,0.2);
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+      <div class="container">
+        <aside class="sidebar">
+          <div class="panel upload-panel">
+            <div class="upload-area">
+              <label for="fileUpload" class="upload-label">
+                <span class="upload-icon">📁</span>
+                <span>Drop image/video or click to upload</span>
+              </label>
+              <input type="file" id="fileUpload" accept="image/*,video/*" class="upload-input">
+            </div>
+          </div>
+
+          <div class="panel controls-panel">
+            <div class="control-group">
+              <label for="gridSize">Grid Size</label>
+              <div class="slider-container">
+                <input type="range" id="gridSize" min="5" max="50" value="20">
+                <span class="value-display" id="gridSizeVal">20</span>
+              </div>
+            </div>
+
+            <div class="control-section">
+              <h3>Image Adjustments</h3>
+              <div class="control-group">
+                <label for="brightness">Brightness</label>
+                <div class="slider-container">
+                  <input type="range" id="brightness" min="-100" max="100" value="20">
+                  <span class="value-display" id="brightnessVal">20</span>
+                </div>
+              </div>
+              <div class="control-group">
+                <label for="contrast">Contrast</label>
+                <div class="slider-container">
+                  <input type="range" id="contrast" min="-100" max="100" value="0">
+                  <span class="value-display" id="contrastVal">0</span>
+                </div>
+              </div>
+              <div class="control-group">
+                <label for="gamma">Gamma</label>
+                <div class="slider-container">
+                  <input type="range" id="gamma" min="0.1" max="3" step="0.1" value="1.0">
+                  <span class="value-display" id="gammaVal">1.0</span>
+                </div>
+              </div>
+              <div class="control-group">
+                <label for="smoothing">Smoothing</label>
+                <div class="slider-container">
+                  <input type="range" id="smoothing" min="0" max="5" step="0.5" value="0">
+                  <span class="value-display" id="smoothingVal">0</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="control-section">
+              <h3>Dithering</h3>
+              <div class="control-group">
+                <select id="ditherType" class="dither-select">
+                  <option value="FloydSteinberg">Smooth Transition (Floyd‑Steinberg)</option>
+                  <option value="Ordered">Patterned Look (Ordered)</option>
+                  <option value="Noise">Grainy Texture (Noise)</option>
+                  <option value="None" selected>No Extra Texture</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel action-panel">
+            <button id="resetButton" class="btn btn-secondary">Reset All</button>
+            <button id="saveButton" class="btn btn-primary">Export PNG</button>
+<button id="exportVideoButton" class="btn btn-secondary">Export Video</button>
+<button id="exportFramesButton" class="btn btn-secondary">Export Frames</button>
+
+          </div>
+        </aside>
+
+        <main class="main-content">
+          <div class="canvas-container">
+            <canvas id="halftoneCanvas"></canvas>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+          // DOM elements
+          const fileUpload       = document.getElementById('fileUpload');
+          const gridSize         = document.getElementById('gridSize');
+          const brightness       = document.getElementById('brightness');
+          const contrast         = document.getElementById('contrast');
+          const gamma            = document.getElementById('gamma');
+          const smoothing        = document.getElementById('smoothing');
+          const ditherType       = document.getElementById('ditherType');
+          const resetButton      = document.getElementById('resetButton');
+          const saveButton       = document.getElementById('saveButton');
+
+          const gridSizeVal      = document.getElementById('gridSizeVal');
+          const brightnessVal    = document.getElementById('brightnessVal');
+          const contrastVal      = document.getElementById('contrastVal');
+          const gammaVal         = document.getElementById('gammaVal');
+          const smoothingVal     = document.getElementById('smoothingVal');
+
+          const halftoneCanvas   = document.getElementById('halftoneCanvas');
+
+          // Global variables for preview
+          let imageElement = null;
+          let videoElement = null;
+          let isVideo = false;
+          let animationFrameId;
+
+          // Default parameter values
+          const defaults = {
+            gridSize: 20,
+            brightness: 20,
+            contrast: 0,
+            gamma: 1.0,
+            smoothing: 0,
+            ditherType: "None"
+          };
+
+          // Debounce helper to limit update frequency.
+          function debounce(func, wait) {
+            let timeout;
+            return function(...args) {
+              clearTimeout(timeout);
+              timeout = setTimeout(() => func.apply(this, args), wait);
+            };
+          }
+
+          function updateAndProcess() {
+            gridSizeVal.textContent = gridSize.value;
+            brightnessVal.textContent = brightness.value;
+            contrastVal.textContent = contrast.value;
+            gammaVal.textContent = parseFloat(gamma.value).toFixed(1); // Format gamma value
+            smoothingVal.textContent = parseFloat(smoothing.value).toFixed(1); // Format smoothing value
+            if (imageElement || videoElement) {
+              processFrame();
+            }
+          }
+
+          const debouncedUpdate = debounce(updateAndProcess, 150);
+
+          // Attach listeners to controls.
+          gridSize.addEventListener('input', debouncedUpdate);
+          brightness.addEventListener('input', debouncedUpdate);
+          contrast.addEventListener('input', debouncedUpdate);
+          gamma.addEventListener('input', debouncedUpdate);
+          smoothing.addEventListener('input', debouncedUpdate);
+          ditherType.addEventListener('change', updateAndProcess); // Dither change can be immediate
+
+          fileUpload.addEventListener('change', handleFileUpload);
+
+          // --- Drag and Drop Functionality ---
+          const uploadArea = document.querySelector('.upload-area');
+
+          ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false); // Prevent browser default behavior for whole page
+          });
+
+          function preventDefaults (e) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+
+          ['dragenter', 'dragover'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, highlight, false);
+          });
+
+          ['dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, unhighlight, false);
+          });
+
+          function highlight(e) {
+            uploadArea.style.backgroundColor = '#d1e7ff'; // Lighter blue for highlight
+            uploadArea.style.borderColor = '#0d6efd'; // Bootstrap primary blue
+          }
+
+          function unhighlight(e) {
+            uploadArea.style.backgroundColor = '#eef'; // Back to original
+             uploadArea.style.borderColor = '#007bff'; // Back to original
+          }
+
+          uploadArea.addEventListener('drop', handleDrop, false);
+
+          function handleDrop(e) {
+            let dt = e.dataTransfer;
+            let files = dt.files;
+            handleFiles(files);
+          }
+
+          function handleFileUpload(e) {
+              handleFiles(e.target.files);
+          }
+
+          function handleFiles(files) {
+            if (files.length === 0) return;
+            const file = files[0]; // Handle only the first file
+            if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
+                alert("Please upload an image or video file.");
+                return;
+            }
+            loadFile(file);
+          }
+          // --- End Drag and Drop ---
+
+
+          function loadFile(file) {
+            const fileURL = URL.createObjectURL(file);
+            // Stop existing video/animation if any
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            if (videoElement) {
+                videoElement.pause();
+                videoElement.removeAttribute('src'); // Clean up
+                videoElement.load(); // Important to release resources
+            }
+            if (imageElement) {
+                imageElement.removeAttribute('src');
+            }
+
+
+            if (file.type.startsWith('video/')) {
+              isVideo = true;
+              imageElement = null; // Clear image element
+              if (!videoElement) { // Create video element if it doesn't exist
+                    videoElement = document.createElement('video');
+                    videoElement.crossOrigin = "anonymous"; // Important for canvas processing
+                    videoElement.muted = true; // Required for autoplay in most browsers
+                    videoElement.loop = true;
+                    videoElement.autoplay = true;
+                    videoElement.playsInline = true; // For iOS playback inline
+                    videoElement.setAttribute("webkit-playsinline", "true"); // For older Safari
+                    videoElement.addEventListener('loadeddata', () => {
+                        console.log("Video loadeddata event");
+                        if (videoElement.readyState >= 2) { // Check if enough data is loaded
+                           setupCanvasDimensions(videoElement.videoWidth, videoElement.videoHeight);
+                            videoElement.play().then(() => {
+                                console.log("Video playing started");
+                                processVideoFrame(); // Start processing loop
+                            }).catch(e => console.error("Video play failed:", e));
+                        }
+                    });
+                    videoElement.addEventListener('error', (e) => {
+                        console.error("Error loading video:", e);
+                         alert("Error loading video. It might be corrupt or in an unsupported format.");
+                    });
+              }
+               videoElement.src = fileURL; // Set the source
+
+            } else if (file.type.startsWith('image/')) {
+              isVideo = false;
+              videoElement = null; // Clear video element
+
+              if (!imageElement) { // Create image element if it doesn't exist
+                  imageElement = new Image();
+                  imageElement.crossOrigin = "anonymous"; // Important for canvas processing
+                   imageElement.addEventListener('load', () => {
+                      console.log("Image loaded");
+                      setupCanvasDimensions(imageElement.naturalWidth, imageElement.naturalHeight);
+                      processFrame(); // Process the static image
+                   });
+                   imageElement.addEventListener('error', (e) => {
+                       console.error("Error loading image:", e);
+                       alert("Error loading image.");
+                   });
+              }
+              imageElement.src = fileURL; // Set the source
+            }
+            // Clean up the object URL after loading (though browsers might handle this)
+            // Consider revoking URL.revokeObjectURL(fileURL) later if needed, but ensure media loads first.
+          }
+
+          function setupCanvasDimensions(width, height) {
+              // Calculate max dimensions based on sidebar width and some padding
+              const sidebarWidth = document.querySelector('.sidebar').offsetWidth;
+              const padding = 40; // Total horizontal padding
+              const availableWidth = window.innerWidth - sidebarWidth - padding;
+              const availableHeight = window.innerHeight - padding; // Use viewport height with some padding
+
+              let newWidth = width;
+              let newHeight = height;
+              const aspectRatio = width / height;
+
+              // Check if image exceeds available width
+              if (newWidth > availableWidth) {
+                  newWidth = availableWidth;
+                  newHeight = newWidth / aspectRatio;
+              }
+
+              // Check if resulting height exceeds available height
+              if (newHeight > availableHeight) {
+                  newHeight = availableHeight;
+                  newWidth = newHeight * aspectRatio;
+              }
+
+               // Ensure dimensions are positive integers
+              newWidth = Math.max(1, Math.floor(newWidth));
+              newHeight = Math.max(1, Math.floor(newHeight));
+
+              console.log(`Setting canvas dimensions: ${newWidth}x${newHeight}`);
+              halftoneCanvas.width = newWidth;
+              halftoneCanvas.height = newHeight;
+
+              // Also resize the container if needed (optional, depends on CSS)
+               const canvasContainer = document.querySelector('.canvas-container');
+              // canvasContainer.style.width = `${newWidth}px`;
+              // canvasContainer.style.height = `${newHeight}px`;
+          }
+
+          function processFrame() {
+            // Ensure we have a valid source and the canvas context is ready
+            if ((!imageElement || !imageElement.src) && (!videoElement || !videoElement.src || videoElement.readyState < 2)) {
+                console.log("No valid media source to process.");
+                return;
+            }
+            if (!halftoneCanvas.getContext) {
+                 console.error("Canvas context not available.");
+                return;
+            }
+             // Check for 0 dimensions which can happen during loading/resizing
+            if (halftoneCanvas.width === 0 || halftoneCanvas.height === 0) {
+                 console.warn("Canvas dimensions are zero, skipping frame processing.");
+                 return;
+            }
+            generateHalftone(halftoneCanvas, 1); // Generate preview at scale 1
+          }
+
+          function processVideoFrame() {
+            if (!isVideo || !videoElement || videoElement.paused || videoElement.ended) {
+                console.log("Video processing stopped.");
+                 animationFrameId = null; // Ensure loop stops
+                 return; // Stop if not video, or video is paused/ended
+            }
+            processFrame();
+             animationFrameId = requestAnimationFrame(processVideoFrame); // Loop for next frame
+          }
+
+          // Generate halftone: compute grayscale per grid cell by iterating over full‑resolution data.
+          function generateHalftone(targetCanvas, scaleFactor) {
+                const sourceElement = isVideo ? videoElement : imageElement;
+                if (!sourceElement || (isVideo && videoElement.readyState < 2) || (!isVideo && !imageElement.complete)) {
+                    console.log("Source element not ready for drawing.");
+                    return; // Source not ready
+                }
+
+                const previewWidth = halftoneCanvas.width; // Base width from preview canvas
+                const previewHeight = halftoneCanvas.height; // Base height from preview canvas
+                const targetWidth = Math.max(1, Math.floor(previewWidth * scaleFactor)); // Ensure positive integer width
+                const targetHeight = Math.max(1, Math.floor(previewHeight * scaleFactor)); // Ensure positive integer height
+
+                 // Check if target dimensions are valid
+                if (targetWidth <= 0 || targetHeight <= 0) {
+                    console.error("Invalid target dimensions for halftone generation:", targetWidth, targetHeight);
+                    return;
+                }
+
+
+                targetCanvas.width = targetWidth;
+                targetCanvas.height = targetHeight;
+
+                // Draw the full‑resolution image/video onto a temporary canvas.
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = targetWidth;
+                tempCanvas.height = targetHeight;
+                const tempCtx = tempCanvas.getContext('2d');
+
+                 if (!tempCtx) {
+                    console.error("Failed to get 2D context for temporary canvas.");
+                    return;
+                 }
+
+                try {
+                   // Determine source dimensions based on media type
+                    const sourceWidth = isVideo ? sourceElement.videoWidth : sourceElement.naturalWidth;
+                    const sourceHeight = isVideo ? sourceElement.videoHeight : sourceElement.naturalHeight;
+
+                    // Check if source dimensions are valid
+                    if (sourceWidth <= 0 || sourceHeight <= 0) {
+                         console.error("Invalid source dimensions:", sourceWidth, sourceHeight);
+                         // Optionally draw a placeholder or return
+                         const ctx = targetCanvas.getContext('2d');
+                         if (ctx) {
+                             ctx.fillStyle = 'grey';
+                             ctx.fillRect(0, 0, targetWidth, targetHeight);
+                             ctx.fillStyle = 'white';
+                             ctx.textAlign = 'center';
+                             ctx.fillText('Error: Invalid source dimensions', targetWidth / 2, targetHeight / 2);
+                         }
+                         return;
+                    }
+
+                    tempCtx.drawImage(sourceElement, 0, 0, sourceWidth, sourceHeight, 0, 0, targetWidth, targetHeight);
+                } catch (e) {
+                    console.error("Error drawing source to temporary canvas:", e);
+                    // Optionally draw an error message on the target canvas
+                     const ctx = targetCanvas.getContext('2d');
+                     if (ctx) {
+                         ctx.fillStyle = 'red';
+                         ctx.fillRect(0, 0, targetWidth, targetHeight);
+                         ctx.fillStyle = 'white';
+                         ctx.textAlign = 'center';
+                         ctx.fillText('Error drawing image', targetWidth / 2, targetHeight / 2);
+                     }
+                    return; // Stop processing if drawImage failed
+                }
+
+                let imgData;
+                try {
+                    imgData = tempCtx.getImageData(0, 0, targetWidth, targetHeight);
+                } catch (e) {
+                    console.error("Error getting image data (possibly CORS issue if source is remote and not configured):", e);
+                    // Draw error message on target canvas
+                     const ctx = targetCanvas.getContext('2d');
+                     if (ctx) {
+                         ctx.fillStyle = 'orange';
+                         ctx.fillRect(0, 0, targetWidth, targetHeight);
+                         ctx.fillStyle = 'black';
+                         ctx.textAlign = 'center';
+                         ctx.fillText('Error: Could not get image data (CORS?)', targetWidth / 2, targetHeight / 2);
+                     }
+                    return; // Stop processing
+                }
+                const data = imgData.data;
+
+                const brightnessAdj = parseInt(brightness.value, 10);
+                const contrastAdj   = parseInt(contrast.value, 10);
+                const gammaValNum   = parseFloat(gamma.value);
+                 // Precompute contrast factor, prevent division by zero if contrastAdj is 259 (unlikely with slider range)
+                const contrastFactor = (contrastAdj === 259) ? Infinity : (259 * (contrastAdj + 255)) / (255 * (259 - contrastAdj));
+
+
+                // Compute grayscale value per pixel.
+                const grayData = new Float32Array(targetWidth * targetHeight);
+                for (let i = 0; i < data.length; i += 4) {
+                  const r = data[i], g = data[i+1], b = data[i+2];
+                  // Basic grayscale conversion
+                  let gray = 0.299 * r + 0.587 * g + 0.114 * b;
+
+                  // Apply Brightness
+                  gray += brightnessAdj;
+
+                  // Apply Contrast
+                  if (contrastFactor !== Infinity) {
+                      gray = contrastFactor * (gray - 128) + 128;
+                  } else if (gray > 128) { // Max contrast handling
+                      gray = 255;
+                  } else {
+                      gray = 0;
+                  }
+
+
+                  // Clamp gray value after brightness/contrast
+                  gray = Math.max(0, Math.min(255, gray));
+
+                  // Apply Gamma correction
+                  if (gammaValNum !== 1.0 && gray > 0) { // Avoid Math.pow(0, negative) -> Infinity
+                     gray = 255 * Math.pow(gray / 255, 1 / gammaValNum);
+                  }
+
+                  // Clamp final gray value
+                  grayData[i / 4] = Math.max(0, Math.min(255, gray));
+                }
+
+                // Divide the image into grid cells.
+                const grid = Math.max(1, parseInt(gridSize.value, 10) * scaleFactor); // Ensure grid size is at least 1
+                const numCols = Math.max(1, Math.ceil(targetWidth / grid)); // Ensure at least 1 col
+                const numRows = Math.max(1, Math.ceil(targetHeight / grid)); // Ensure at least 1 row
+                let cellValues = new Float32Array(numRows * numCols);
+
+                for (let row = 0; row < numRows; row++) {
+                  for (let col = 0; col < numCols; col++) {
+                    let sum = 0, count = 0;
+                    const startY = Math.floor(row * grid);
+                    const startX = Math.floor(col * grid);
+                    // Ensure end coordinates don't exceed image bounds
+                    const endY = Math.min(Math.floor(startY + grid), targetHeight);
+                    const endX = Math.min(Math.floor(startX + grid), targetWidth);
+
+                    for (let y = startY; y < endY; y++) {
+                      for (let x = startX; x < endX; x++) {
+                         const index = y * targetWidth + x;
+                         // Check array bounds just in case (though should be correct with logic above)
+                         if (index >= 0 && index < grayData.length) {
+                             sum += grayData[index];
+                             count++;
+                         }
+                      }
+                    }
+                    cellValues[row * numCols + col] = (count > 0) ? (sum / count) : 0; // Avoid division by zero
+                  }
+                }
+
+                // Apply smoothing if enabled.
+                const smoothingStrength = parseFloat(smoothing.value);
+                if (smoothingStrength > 0) {
+                  cellValues = applyBoxBlur(cellValues, numRows, numCols, smoothingStrength);
+                }
+
+                // Apply dithering if selected.
+                const selectedDither = ditherType.value;
+                if (selectedDither === "FloydSteinberg") {
+                  applyFloydSteinbergDithering(cellValues, numRows, numCols);
+                } else if (selectedDither === "Ordered") {
+                  applyOrderedDithering(cellValues, numRows, numCols);
+                } else if (selectedDither === "Noise") {
+                  applyNoiseDithering(cellValues, numRows, numCols);
+                }
+
+                // Draw the halftone dots.
+                const ctx = targetCanvas.getContext('2d');
+                 if (!ctx) {
+                     console.error("Failed to get 2D context for target canvas.");
+                     return;
+                 }
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, targetWidth, targetHeight);
+
+                const minRadius = 0.5; // Minimum radius to draw a dot
+
+                for (let row = 0; row < numRows; row++) {
+                  for (let col = 0; col < numCols; col++) {
+                    const brightnessValue = cellValues[row * numCols + col];
+                    const norm = Math.max(0, Math.min(1, brightnessValue / 255)); // Normalize and clamp [0, 1]
+                    const maxRadius = grid / 2;
+                    const radius = maxRadius * (1 - norm); // Larger radius for darker areas
+
+                    if (radius >= minRadius) { // Only draw if the dot is large enough
+                      ctx.beginPath();
+                      const centerX = col * grid + grid / 2;
+                      const centerY = row * grid + grid / 2;
+                      ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+                      ctx.fillStyle = 'black';
+                      ctx.fill();
+                    }
+                  }
+                }
+          }
+
+
+          // 3× Box Blur for smoothing grid cell values.
+          function applyBoxBlur(cellValues, numRows, numCols, strength) {
+            let currentValues = new Float32Array(cellValues);
+            let nextValues = new Float32Array(currentValues.length);
+            const passes = Math.max(1, Math.round(strength)); // Apply blur at least once if strength > 0
+
+            for (let p = 0; p < passes; p++) {
+                for (let row = 0; row < numRows; row++) {
+                    for (let col = 0; col < numCols; col++) {
+                        let sum = 0;
+                        let count = 0;
+                        for (let dy = -1; dy <= 1; dy++) {
+                            for (let dx = -1; dx <= 1; dx++) {
+                                const r = row + dy;
+                                const c = col + dx;
+                                if (r >= 0 && r < numRows && c >= 0 && c < numCols) {
+                                    sum += currentValues[r * numCols + c];
+                                    count++;
+                                }
+                            }
+                        }
+                        nextValues[row * numCols + col] = (count > 0) ? (sum / count) : currentValues[row * numCols + col];
+                    }
+                }
+                // Swap buffers for next pass or final result
+                 let temp = currentValues;
+                 currentValues = nextValues;
+                 nextValues = temp; // Reuse the old buffer
+            }
+            // currentValues now holds the result after all passes
+            return currentValues;
+          }
+
+          function applyFloydSteinbergDithering(cellValues, numRows, numCols) {
+            const threshold = 128;
+            const data = new Float32Array(cellValues); // Work on a copy
+
+            for (let row = 0; row < numRows; row++) {
+                for (let col = 0; col < numCols; col++) {
+                    const index = row * numCols + col;
+                    const oldVal = data[index];
+                    const newVal = oldVal < threshold ? 0 : 255;
+                    const error = oldVal - newVal;
+                    data[index] = newVal; // Update the current pixel immediately
+
+                    // Distribute error to neighbors (check bounds)
+                    let idx;
+                    // Pixel to the right
+                    if (col + 1 < numCols) {
+                        idx = row * numCols + (col + 1);
+                        data[idx] += error * (7 / 16);
+                    }
+                    // Pixel below-left
+                    if (row + 1 < numRows && col - 1 >= 0) {
+                        idx = (row + 1) * numCols + (col - 1);
+                        data[idx] += error * (3 / 16);
+                    }
+                     // Pixel below
+                    if (row + 1 < numRows) {
+                         idx = (row + 1) * numCols + col;
+                         data[idx] += error * (5 / 16);
+                    }
+                    // Pixel below-right
+                    if (row + 1 < numRows && col + 1 < numCols) {
+                         idx = (row + 1) * numCols + (col + 1);
+                         data[idx] += error * (1 / 16);
+                    }
+                }
+            }
+             // Copy the modified data back to the original array
+            for(let i=0; i < cellValues.length; i++) {
+                cellValues[i] = Math.max(0, Math.min(255, data[i])); // Clamp final values
+            }
+          }
+
+          function applyOrderedDithering(cellValues, numRows, numCols) {
+             // Larger Bayer matrices produce smoother results but repeat more obviously
+             // const bayerMatrix = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]]; // 4x4
+             // const matrixSize = 4;
+             const bayerMatrix = [[0, 2], [3, 1]]; // 2x2
+             const matrixSize = 2;
+             const levels = matrixSize * matrixSize; // Number of threshold levels
+
+            for (let row = 0; row < numRows; row++) {
+                for (let col = 0; col < numCols; col++) {
+                    const index = row * numCols + col;
+                    const matrixVal = bayerMatrix[row % matrixSize][col % matrixSize];
+                    // Scale threshold based on matrix value and number of levels
+                    const threshold = (matrixVal + 0.5) * (255 / levels);
+                    cellValues[index] = cellValues[index] < threshold ? 0 : 255;
+                }
+            }
+          }
+
+          function applyNoiseDithering(cellValues, numRows, numCols) {
+            const threshold = 128;
+             const noiseIntensity = 64; // Adjust intensity (0-255 range influence)
+
+            for (let row = 0; row < numRows; row++) {
+                for (let col = 0; col < numCols; col++) {
+                    const index = row * numCols + col;
+                     // Generate noise centered around 0
+                    const noise = (Math.random() - 0.5) * noiseIntensity;
+                    const adjustedVal = cellValues[index] + noise;
+                    cellValues[index] = adjustedVal < threshold ? 0 : 255;
+                }
+            }
+          }
+
+          resetButton.addEventListener('click', () => {
+            gridSize.value = defaults.gridSize;
+            brightness.value = defaults.brightness;
+            contrast.value = defaults.contrast;
+            gamma.value = defaults.gamma;
+            smoothing.value = defaults.smoothing;
+            ditherType.value = defaults.ditherType;
+            updateAndProcess(); // Update UI and reprocess if media is loaded
+          });
+
+          saveButton.addEventListener('click', () => {
+             const sourceElement = isVideo ? videoElement : imageElement;
+              if (!sourceElement || (isVideo && videoElement.readyState < 2) || (!isVideo && !imageElement.complete)) {
+                alert("Please load an image or video first.");
+                return;
+             }
+
+             const exportScaleFactor = 3; // Increase scale factor for higher resolution export
+             const exportCanvas = document.createElement('canvas');
+             console.log(`Generating export canvas with scale factor ${exportScaleFactor}...`);
+
+             // Run generateHalftone on the temporary export canvas
+             generateHalftone(exportCanvas, exportScaleFactor);
+
+            // Check if canvas is non-empty (simple check)
+            if (exportCanvas.width <= 0 || exportCanvas.height <= 0) {
+                 console.error("Export canvas generation failed or resulted in zero dimensions.");
+                 alert("Failed to generate the image for export.");
+                 return;
+            }
+
+
+             try {
+                 const dataURL = exportCanvas.toDataURL('image/png');
+                 const link = document.createElement('a');
+                 link.href = dataURL;
+                 link.download = 'halftone_export.png'; // More descriptive name
+                 document.body.appendChild(link); // Append link to body for Firefox compatibility
+                 link.click();
+                 document.body.removeChild(link); // Clean up the link
+                 console.log("Export successful.");
+             } catch (e) {
+                 console.error("Error generating or downloading the PNG:", e);
+                 alert(`Failed to export PNG. Error: ${e.message}`);
+             }
+          });
+
+          
+const exportVideoButton = document.getElementById("exportVideoButton");
+
+exportVideoButton.addEventListener("click", async () => {
+  if (!isVideo || !videoElement || videoElement.readyState < 2) {
+    alert("Please upload a video first.");
+    return;
+  }
+
+  const stream = halftoneCanvas.captureStream(30);
+  const recorder = new MediaRecorder(stream, {
+    mimeType: "video/webm;codecs=vp9"
+  });
+
+  let chunks = [];
+
+  recorder.ondataavailable = e => {
+    if (e.data.size > 0) chunks.push(e.data);
+  };
+
+  recorder.onstop = () => {
+    const blob = new Blob(chunks, { type: "video/webm" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "halftone_video.webm";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const RECORD_DURATION = 5000;
+
+  recorder.start();
+  console.log("Recording started...");
+
+  setTimeout(() => {
+    recorder.stop();
+    console.log("Recording stopped.");
+  }, RECORD_DURATION);
+});
+
+const exportFramesButton = document.getElementById("exportFramesButton");
+
+exportFramesButton.addEventListener("click", async () => {
+  if (!isVideo || !videoElement || videoElement.readyState < 2) {
+    alert("Please upload a video first.");
+    return;
+  }
+
+  const totalFrames = 90;
+  const delay = 1000 / 30;
+  let frameCount = 0;
+
+  const exportCanvas = document.createElement('canvas');
+  const exportScaleFactor = 3;
+
+  function captureNextFrame() {
+    if (frameCount >= totalFrames) {
+      alert("All frames saved as PNGs.");
+      return;
+    }
+
+    generateHalftone(exportCanvas, exportScaleFactor);
+
+    exportCanvas.toBlob((blob) => {
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `halftone_frame_${String(frameCount).padStart(3, "0")}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      frameCount++;
+
+      setTimeout(captureNextFrame, delay);
+    }, "image/png");
+  }
+
+  videoElement.currentTime = 0;
+  videoElement.play();
+  setTimeout(captureNextFrame, 500);
+});
+
+
+// Initialize - Set up initial canvas state (e.g., placeholder)
+          function initializeCanvas() {
+              setupCanvasDimensions(600, 400); // Initial placeholder size
+              const ctx = halftoneCanvas.getContext('2d');
+               if(ctx) {
+                  ctx.fillStyle = '#ddd'; // Light grey background
+                  ctx.fillRect(0, 0, halftoneCanvas.width, halftoneCanvas.height);
+                  ctx.fillStyle = '#555'; // Darker grey text
+                  ctx.font = '16px sans-serif';
+                  ctx.textAlign = 'center';
+                  ctx.fillText('Upload or drop an image/video', halftoneCanvas.width / 2, halftoneCanvas.height / 2);
+               } else {
+                   console.error("Failed to get canvas context during initialization.");
+               }
+          }
+
+          // Automatically load a default video (optional, uncomment if needed)
+         /*
+          (function loadDefaultVideo() {
+            const videoURL = "https://i.imgur.com/5PrJCc2.mp4"; // Example video URL
+            const file = { type: 'video/mp4' }; // Mock file object
+            // Create a pseudo-file object or fetch and create Blob if needed for `loadFile`
+            // This part might need adjustment depending on `loadFile`'s requirements
+            // For simplicity, let's directly use the URL approach if `loadFile` handles it:
+
+            isVideo = true;
+             imageElement = null;
+            videoElement = document.createElement('video');
+            videoElement.crossOrigin = "anonymous";
+            videoElement.playsInline = true;
+            videoElement.setAttribute("webkit-playsinline", "true");
+            videoElement.src = videoURL;
+            videoElement.autoplay = true;
+            videoElement.loop = true;
+            videoElement.muted = true; // Mute is often necessary for autoplay
+            videoElement.addEventListener('loadeddata', () => {
+                 if (videoElement.readyState >= 2) {
+                    console.log("Default video loaded.");
+                    setupCanvasDimensions(videoElement.videoWidth, videoElement.videoHeight);
+                    videoElement.play().then(processVideoFrame).catch(e => console.error("Autoplay failed:", e));
+                 }
+            });
+             videoElement.addEventListener('error', (e) => {
+                 console.error("Error loading default video:", e);
+                 initializeCanvas(); // Show placeholder if default fails
+             });
+
+          })();
+         */
+
+          // If no default video, initialize with placeholder
+           initializeCanvas();
+           // Update sliders display initially
+           updateAndProcess();
+
+
+        });
+    </script>
+
+</body>
+</html>
